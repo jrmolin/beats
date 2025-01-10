@@ -4,52 +4,28 @@
 
 package ipfix
 
-
 import (
+	"github.com/elastic/beats/v7/x-pack/filebeat/input/netflow/decoder"
 	"github.com/elastic/beats/v7/x-pack/filebeat/input/netflow/decoder/fields"
 )
 
 // Config contains the parquet reader config options.
 type Config struct {
 	// InternalNetworks defines the pre-configured networks treated as internal
-	InternalNetworks  []string `config:"internal_networks"`
+	InternalNetworks []string `config:"internal_networks"`
 	// CustomDefinitions
 	CustomDefinitions []string `config:"custom_definitions"`
 }
 
 func (cfg *Config) Fields() fields.FieldDict {
-	customFields := make([]fields.FieldDict, len(cfg.CustomDefinitions))
-	for idx, yamlPath := range cfg.CustomDefinitions {
-		f, err := LoadFieldDefinitionsFromFile(yamlPath)
+	myFields := fields.FieldDict{}
+	for _, yamlPath := range cfg.CustomDefinitions {
+		f, err := decoder.LoadFieldDefinitionsFromFile(yamlPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed parsing custom field definitions from file '%s': %w", yamlPath, err)
+			return nil
 		}
-		customFields[idx] = f
-	}
-}
-
-func (im *netflowInputManager) Create(cfg *conf.C) (v2.Input, error) {
-	inputCfg := defaultConfig
-	if err := cfg.Unpack(&inputCfg); err != nil {
-		return nil, err
+		myFields.Merge(f)
 	}
 
-	customFields := make([]fields.FieldDict, len(inputCfg.CustomDefinitions))
-	for idx, yamlPath := range inputCfg.CustomDefinitions {
-		f, err := LoadFieldDefinitionsFromFile(yamlPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed parsing custom field definitions from file '%s': %w", yamlPath, err)
-		}
-		customFields[idx] = f
-	}
-
-	input := &netflowInput{
-		cfg:              inputCfg,
-		customFields:     customFields,
-		internalNetworks: inputCfg.InternalNetworks,
-		logger:           im.log,
-		queueSize:        inputCfg.PacketQueueSize,
-	}
-
-	return input, nil
+	return myFields
 }

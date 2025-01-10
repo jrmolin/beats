@@ -5,6 +5,7 @@
 package awss3
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -20,8 +21,8 @@ type ipfixDecoder struct {
 // It returns an error if the ipfix reader cannot be created.
 func newIpfixDecoder(config decoderConfig, r io.Reader) (decoder, error) {
 	reader, err := ipfix.NewBufferedReader(r, &ipfix.Config{
-		InternalNetworks:   config.Codec.IPFIX.InternalNetworks,
-		CustomDefinitions:  config.Codec.IPFIX.CustomDefinitions,
+		InternalNetworks:  config.Codec.IPFIX.InternalNetworks,
+		CustomDefinitions: config.Codec.IPFIX.CustomDefinitions,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ipfix decoder: %w", err)
@@ -39,11 +40,15 @@ func (pd *ipfixDecoder) next() bool {
 // decode reads and decodes an IPFIX data stream. After reading the IPFIX data it decodes
 // the output to JSON and returns it as a byte slice. It returns an error if the data cannot be decoded.
 func (pd *ipfixDecoder) decode() ([]byte, error) {
-	data, err := pd.reader.Record()
+	v, err := pd.decodeValue()
 	if err != nil {
 		return nil, err
 	}
-	return data, nil
+	output, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return output, err
 }
 
 // close closes the ipfix decoder and releases the resources.
@@ -51,3 +56,11 @@ func (pd *ipfixDecoder) close() error {
 	return pd.reader.Close()
 }
 
+// return a json blob, to turn this decoder into a valueDecoder
+func (pd *ipfixDecoder) decodeValue() (any, error) {
+	flows, err := pd.reader.Record()
+	if err != nil {
+		return nil, err
+	}
+	return flows, nil
+}
