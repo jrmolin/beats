@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package awss3
+package decoding
 
 import (
 	"encoding/csv"
@@ -12,8 +12,8 @@ import (
 	"slices"
 )
 
-// csvDecoder is a decoder for CSV data.
-type csvDecoder struct {
+// CSVDecoder is a decoder for CSV data.
+type CSVDecoder struct {
 	r *csv.Reader
 
 	header  []string
@@ -24,8 +24,8 @@ type csvDecoder struct {
 }
 
 // newParquetDecoder creates a new CSV decoder.
-func newCSVDecoder(config decoderConfig, r io.Reader) (decoder, error) {
-	d := csvDecoder{r: csv.NewReader(r)}
+func newCSVDecoder(config DecoderConfig, r io.Reader) (Decoder, error) {
+	d := CSVDecoder{r: csv.NewReader(r)}
 	d.r.ReuseRecord = true
 	if config.Codec.CSV.Comma != nil {
 		d.r.Comma = rune(*config.Codec.CSV.Comma)
@@ -46,9 +46,9 @@ func newCSVDecoder(config decoderConfig, r io.Reader) (decoder, error) {
 	return &d, nil
 }
 
-// next advances the decoder to the next data item and returns true if
+// Next advances the decoder to the next data item and returns true if
 // there is more data to be decoded.
-func (d *csvDecoder) next() bool {
+func (d *CSVDecoder) Next() bool {
 	if d.err != nil {
 		return false
 	}
@@ -57,20 +57,20 @@ func (d *csvDecoder) next() bool {
 	return d.err == nil
 }
 
-// decode returns the JSON encoded value of the current CSV line. next must
-// have been called before any calls to decode.
-func (d *csvDecoder) decode() ([]byte, error) {
-	_, v, err := d.decodeValue()
+// Decode returns the JSON encoded value of the current CSV line. Next must
+// have been called before any calls to Decode.
+func (d *CSVDecoder) Decode() ([]byte, error) {
+	_, v, err := d.DecodeValue()
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(v)
 }
 
-// decodeValue returns the value of the current CSV line interpreted as
+// DecodeValue returns the value of the current CSV line interpreted as
 // an object with fields based on the header held by the receiver. next must
 // have been called before any calls to decode.
-func (d *csvDecoder) decodeValue() (offset int64, val any, _ error) {
+func (d *CSVDecoder) DecodeValue() (offset int64, val any, _ error) {
 	if d.err != nil {
 		return d.offset, nil, d.err
 	}
@@ -88,8 +88,8 @@ func (d *csvDecoder) decodeValue() (offset int64, val any, _ error) {
 	return d.offset, m, nil
 }
 
-// close closes the parquet decoder and releases the resources.
-func (d *csvDecoder) close() error {
+// Close closes the parquet decoder and releases the resources.
+func (d *CSVDecoder) Close() error {
 	if d.err == io.EOF {
 		return nil
 	}

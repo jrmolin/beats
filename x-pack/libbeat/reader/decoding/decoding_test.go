@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package awss3
+package decoding
 
 import (
 	"encoding/json"
@@ -15,11 +15,21 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/elastic/beats/v7/libbeat/common/match"
 	conf "github.com/elastic/elastic-agent-libs/config"
 )
 
 // all test files are read from the "testdata" directory
 const testDataPath = "testdata"
+
+type fileSelectorConfig struct {
+	Regex        *match.Matcher `config:"regex" validate:"required"`
+	ReaderConfig readerConfig   `config:",inline"`
+}
+
+type readerConfig struct {
+	Decoding DecoderConfig `config:"decoding"`
+}
 
 func TestDecoding(t *testing.T) {
 	testCases := []struct {
@@ -35,9 +45,9 @@ func TestDecoding(t *testing.T) {
 			file:      "vpc-flow.gz.parquet",
 			numEvents: 1304,
 			config: &readerConfig{
-				Decoding: decoderConfig{
-					Codec: &codecConfig{
-						Parquet: &parquetCodecConfig{
+				Decoding: DecoderConfig{
+					Codec: &CodecConfig{
+						Parquet: &ParquetCodecConfig{
 							ProcessParallel: true,
 							BatchSize:       1,
 						},
@@ -50,9 +60,9 @@ func TestDecoding(t *testing.T) {
 			file:      "vpc-flow.gz.parquet",
 			numEvents: 1304,
 			config: &readerConfig{
-				Decoding: decoderConfig{
-					Codec: &codecConfig{
-						Parquet: &parquetCodecConfig{
+				Decoding: DecoderConfig{
+					Codec: &CodecConfig{
+						Parquet: &ParquetCodecConfig{
 							ProcessParallel: true,
 							BatchSize:       100,
 						},
@@ -65,9 +75,9 @@ func TestDecoding(t *testing.T) {
 			file:      "vpc-flow.gz.parquet",
 			numEvents: 1304,
 			config: &readerConfig{
-				Decoding: decoderConfig{
-					Codec: &codecConfig{
-						Parquet: &parquetCodecConfig{
+				Decoding: DecoderConfig{
+					Codec: &CodecConfig{
+						Parquet: &ParquetCodecConfig{
 							Enabled: true,
 						},
 					},
@@ -80,9 +90,9 @@ func TestDecoding(t *testing.T) {
 			numEvents:     1,
 			assertAgainst: "cloudtrail.json",
 			config: &readerConfig{
-				Decoding: decoderConfig{
-					Codec: &codecConfig{
-						Parquet: &parquetCodecConfig{
+				Decoding: DecoderConfig{
+					Codec: &CodecConfig{
+						Parquet: &ParquetCodecConfig{
 							Enabled:         true,
 							ProcessParallel: true,
 							BatchSize:       1,
@@ -97,9 +107,9 @@ func TestDecoding(t *testing.T) {
 			numEvents:     4,
 			assertAgainst: "txn.json",
 			config: &readerConfig{
-				Decoding: decoderConfig{
-					Codec: &codecConfig{
-						CSV: &csvCodecConfig{
+				Decoding: DecoderConfig{
+					Codec: &CodecConfig{
+						CSV: &CSVCodecConfig{
 							Enabled: true,
 							Comma:   ptr[configRune](' '),
 						},
@@ -113,9 +123,9 @@ func TestDecoding(t *testing.T) {
 			numEvents:     4,
 			assertAgainst: "txn.json",
 			config: &readerConfig{
-				Decoding: decoderConfig{
-					Codec: &codecConfig{
-						CSV: &csvCodecConfig{
+				Decoding: DecoderConfig{
+					Codec: &CodecConfig{
+						CSV: &CSVCodecConfig{
 							Enabled: true,
 							Comma:   ptr[configRune](' '),
 						},
@@ -167,7 +177,7 @@ func readJSONFromFile(t *testing.T, filepath string) []string {
 var codecConfigTests = []struct {
 	name    string
 	yaml    string
-	want    decoderConfig
+	want    DecoderConfig
 	wantErr error
 }{
 	{

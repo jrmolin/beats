@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package awss3
+package decoding
 
 import (
 	"errors"
@@ -11,25 +11,25 @@ import (
 )
 
 // decoderConfig contains the configuration options for instantiating a decoder.
-type decoderConfig struct {
-	Codec *codecConfig `config:"codec"`
+type DecoderConfig struct {
+	Codec *CodecConfig `config:"codec"`
 }
 
-// codecConfig contains the configuration options for different codecs used by a decoder.
-type codecConfig struct {
-	Parquet *parquetCodecConfig `config:"parquet"`
-	CSV     *csvCodecConfig     `config:"csv"`
+// CodecConfig contains the configuration options for different codecs used by a decoder.
+type CodecConfig struct {
+	Parquet *ParquetCodecConfig `config:"parquet"`
+	CSV     *CSVCodecConfig     `config:"csv"`
 }
 
-func (c *codecConfig) Validate() error {
+func (c *CodecConfig) Validate() error {
 	if c.Parquet != nil && c.CSV != nil {
 		return errors.New("more than one decoder configured")
 	}
 	return nil
 }
 
-// csvCodecConfig contains the configuration options for the CSV codec.
-type csvCodecConfig struct {
+// CSVCodecConfig contains the configuration options for the CSV codec.
+type CSVCodecConfig struct {
 	Enabled bool `config:"enabled"`
 
 	// Fields is the set of field names. If it is present
@@ -62,8 +62,8 @@ func (r *configRune) Unpack(s string) error {
 	return nil
 }
 
-// parquetCodecConfig contains the configuration options for the parquet codec.
-type parquetCodecConfig struct {
+// ParquetCodecConfig contains the configuration options for the parquet codec.
+type ParquetCodecConfig struct {
 	Enabled         bool `config:"enabled"`
 	ProcessParallel bool `config:"process_parallel"`
 	BatchSize       int  `config:"batch_size" default:"1"`

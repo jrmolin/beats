@@ -27,6 +27,8 @@ import (
 	"github.com/elastic/beats/v7/libbeat/reader/readfile/encoding"
 	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/mapstr"
+
+	"github.com/elastic/beats/v7/x-pack/libbeat/reader/decoding"
 )
 
 type s3ObjectProcessorFactory struct {
@@ -159,16 +161,16 @@ func (p *s3ObjectProcessor) ProcessS3Object(log *logp.Logger, eventCallback func
 	}
 
 	// try to create a dec from the using the codec config
-	dec, err := newDecoder(p.readerConfig.Decoding, streamReader)
+	dec, err := decoding.NewDecoder(p.readerConfig.Decoding, streamReader)
 	if err != nil {
 		return err
 	}
 	switch dec := dec.(type) {
-	case valueDecoder:
-		defer dec.close()
+	case decoding.ValueDecoder:
+		defer dec.Close()
 
-		for dec.next() {
-			evtOffset, val, err := dec.decodeValue()
+		for dec.Next() {
+			evtOffset, val, err := dec.DecodeValue()
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil
@@ -184,12 +186,12 @@ func (p *s3ObjectProcessor) ProcessS3Object(log *logp.Logger, eventCallback func
 			p.eventCallback(evt)
 		}
 
-	case decoder:
-		defer dec.close()
+	case decoding.Decoder:
+		defer dec.Close()
 
 		var evtOffset int64
-		for dec.next() {
-			data, err := dec.decode()
+		for dec.Next() {
+			data, err := dec.Decode()
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil

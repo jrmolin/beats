@@ -166,3 +166,5 @@ func TestRegionSelection(t *testing.T) {
 		})
 	}
 }
+
+// TODO: move awss3-specific decoding tests here
