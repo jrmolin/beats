@@ -10,6 +10,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -38,6 +39,8 @@ import (
 
 var (
 	update = flag.Bool("update", false, "update golden data")
+
+	testRunCount = 0
 
 	sanitizer = strings.NewReplacer("-", "--", ":", "-", "/", "-", "+", "-", " ", "-", ",", "")
 )
@@ -94,11 +97,12 @@ func TestNetFlow(t *testing.T) {
 		isReversed := strings.HasSuffix(file, ".reversed.pcap")
 
 		t.Run(testName, func(t *testing.T) {
+			testRunCount++
 
 			pluginCfg, err := conf.NewConfigFrom(mapstr.M{})
 			require.NoError(t, err)
 			if isReversed {
-				t.Skip("Flaky on macOS: https://github.com/elastic/beats/issues/43670")
+				//t.Skip("Flaky on macOS: https://github.com/elastic/beats/issues/43670")
 
 				// if pcap is reversed packet order we need to have multiple workers
 				// and thus enable the input packets lru
@@ -154,10 +158,20 @@ func TestNetFlow(t *testing.T) {
 				totalPackets++
 			}
 
-			require.Eventually(t, func() bool {
+			require.Eventuallyf(t, func() bool {
 				return len(mockPipeline.GetAllEvents()) == len(goldenData.Flows)
 			}, 5*time.Second, 100*time.Millisecond,
-				"got a different number of events than expected")
+				"Run #%d: testname: %s\n%s",
+				testRunCount,
+				testName,
+				func() string {
+					expected := len(goldenData.Flows)
+					actual := len(mockPipeline.GetAllEvents())
+					return fmt.Sprintf("expected %d and got %d (diff of %d)",
+						expected,
+						actual,
+						expected-actual)
+				}())
 
 			for _, event := range goldenData.Flows {
 				// fields that cannot be matched at runtime

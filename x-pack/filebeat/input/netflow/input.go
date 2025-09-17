@@ -181,25 +181,31 @@ func (n *netflowInput) Run(env v2.Context, connector beat.PipelineConnector) err
 					flows, err := n.decoder.Read(bytes.NewBuffer(pkt.data), pkt.source)
 					if err != nil {
 						n.logger.Warnf("Error parsing NetFlow packet of length %d from %s: %v", len(pkt.data), pkt.source, err)
+						n.mtx.Lock()
 						if decodeErrors := n.metrics.DecodeErrors(); decodeErrors != nil {
 							decodeErrors.Inc()
 						}
+						n.mtx.Unlock()
 						continue
 					}
 
 					fLen := len(flows)
 					if fLen != 0 {
 						evs := make([]beat.Event, fLen)
+						n.mtx.Lock()
 						if flowsTotal := n.metrics.Flows(); flowsTotal != nil {
 							flowsTotal.Add(uint64(fLen))
 						}
+						n.mtx.Unlock()
 						for flowIdx, flow := range flows {
 							evs[flowIdx] = toBeatEvent(flow, n.internalNetworks)
 						}
 						client.PublishAll(evs)
 					}
+					n.mtx.Lock()
 					n.udpMetrics.EventReceived(len(pkt.data), pktStartTime)
 					n.udpMetrics.EventPublished(pktStartTime)
+					n.mtx.Unlock()
 				}
 			}
 		}(client)
